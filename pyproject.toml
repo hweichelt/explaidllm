@@ -1,0 +1,42 @@
+[build-system]
+requires = [
+    "setuptools",
+    "setuptools-scm",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "explaidllm"
+authors = [
+    { name = "Hannes Weichelt", email = "hweichelt@uni-potsdam.de" },
+]
+maintainers = [{ name = "Hannes Weichelt", email = "hweichelt@uni-potsdam.de" }]
+description = "CLI tool for debugging clingo using a combination of MUS and LLMs"
+requires-python = ">=3.12"
+license = {file = "LICENSE"}
+dynamic = [ "version" ]
+readme = "README.md"
+dependencies = [
+	"clingo>=5.8",
+    "autoflake",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/hweichelt/explaidllm"
+Source = "https://github.com/hweichelt/explaidllm"
+"Issues" = "https://github.com/hweichelt/explaidllm/issues"
+
+[project.scripts]
+explaidllm = "explaidllm.__main__:main"
