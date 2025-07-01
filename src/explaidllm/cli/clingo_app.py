@@ -1,12 +1,14 @@
 """
 App Module: clingexplaid CLI clingo app
 """
-
+import logging
 from importlib.metadata import version
 from typing import Sequence
 
 import clingo
 from clingo.application import Application
+
+logger = logging.getLogger(__name__)
 
 
 class ExplaidLlmApp(Application):
@@ -20,13 +22,24 @@ class ExplaidLlmApp(Application):
     # def register_options(self, options: clingo.ApplicationOptions) -> None:
     #     group = "ExplaidLLM Methods"
 
-    def main(self, control: clingo.Control, files: Sequence[str]) -> None:
-        print("explaidllm", "version", version("explaidllm"))
+    @staticmethod
+    def is_satisfiable(program: str) -> bool:
+        control = clingo.Control()
+        control.add("base", [], program)
+        control.ground([("base", [])])
+        return control.solve().satisfiable
 
-        # printing the input files
+    @staticmethod
+    def compile_program_from_files(files: Sequence[str], verbose: int = 1):
         if not files:
-            print("Reading from -")
+            logger.info("Reading from -")
         else:
-            print(f"Reading from {files[0]} {'...' if len(files) > 1 else ''}")
+            logger.info(f"Reading from {files[0]} {'...' if len(files) > 1 else ''}")
 
-        print("DO EXPLANATION HERE")
+
+    def main(self, control: clingo.Control, files: Sequence[str]) -> None:
+        logger.info(f"Using ExplaidLLM version {version('explaidllm')}")
+
+        ExplaidLlmApp.compile_program_from_files(files)
+
+        logger.warning("IMPLEMENT EXPLANATION HERE")
