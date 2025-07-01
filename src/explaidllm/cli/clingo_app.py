@@ -8,7 +8,9 @@ from typing import Sequence
 import clingo
 from clingo.application import Application
 
-logger = logging.getLogger(__name__)
+from ..utils.logging import DEFAULT_LOGGER_NAME
+
+logger = logging.getLogger(DEFAULT_LOGGER_NAME)
 
 
 class ExplaidLlmApp(Application):

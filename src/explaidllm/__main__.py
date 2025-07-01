@@ -4,12 +4,11 @@ import sys
 from clingo.application import clingo_main
 
 from .cli import ExplaidLlmApp
-
-logger = logging.getLogger(__name__)
+from .utils.logging import setup_logger
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    logger = setup_logger(level=logging.DEBUG)
     logger.info("Starting ExplaidLLM")
     clingo_main(ExplaidLlmApp(sys.argv[0]), sys.argv[1:] + ["-V0"])
 
