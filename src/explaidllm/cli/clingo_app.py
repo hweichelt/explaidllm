@@ -9,11 +9,20 @@ import clingo
 from clingexplaid.mus import CoreComputer
 from clingexplaid.mus.core_computer import UnsatisfiableSubset
 from clingexplaid.preprocessors import AssumptionPreprocessor
+from clingo import Symbol
 from clingo.application import Application
 
 from ..utils.logging import DEFAULT_LOGGER_NAME
 
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
+
+def render_assumptions(assumptions: Iterable[Tuple[Symbol, bool]]) -> str:
+    output = []
+    for assumption in assumptions:
+        assumption_sign = "[+]" if assumption[1] else "[-]"
+        assumption_string = f"{assumption[0]}{assumption_sign}"
+        output.append(assumption_string)
+    return "{" + ", ".join(output) + "}"
 
 
 class ExplaidLlmApp(Application):
@@ -56,7 +65,7 @@ class ExplaidLlmApp(Application):
         control.add("base", [], program)
         control.ground([("base", [])])
         cc = CoreComputer(control=control, assumption_set=ap.assumptions)
-        logger.debug(f"Solving program with assumptions: {ap.assumptions}")
+        logger.debug(f"Solving program with assumptions:\n{render_assumptions(ap.assumptions)}")
         with control.solve(assumptions=list(ap.assumptions), yield_=True) as solve_handle:
             result = solve_handle.get()
             if result.satisfiable:
