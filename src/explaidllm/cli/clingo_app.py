@@ -3,12 +3,13 @@ App Module: clingexplaid CLI clingo app
 """
 import logging
 from importlib.metadata import version
-from typing import Iterable, Optional, Sequence, Tuple
+from typing import Dict, Iterable, Optional, Sequence, Tuple
 
 import clingo
 from clingexplaid.mus import CoreComputer
 from clingexplaid.mus.core_computer import UnsatisfiableSubset
 from clingexplaid.preprocessors import AssumptionPreprocessor
+from clingexplaid.unsat_constraints import UnsatConstraintComputer
 from clingo import Symbol
 from clingo.application import Application
 from dotenv import load_dotenv
@@ -77,6 +78,14 @@ class ExplaidLlmApp(Application):
                 logger.debug("Computing MUS of UNSAT Program")
                 return cc.shrink(solve_handle.core())
 
+    @staticmethod
+    def compute_unsatisfiable_constraints(files: Sequence[str], mus: UnsatisfiableSubset) -> Dict[int, str]:
+        mus_string = " ".join([f"{'' if a.sign else '-'}{a.symbol}" for a in mus.assumptions])
+        ucc = UnsatConstraintComputer()
+        ucc.parse_files(files)
+        unsatisfiable_constraints = ucc.get_unsat_constraints(assumption_string=mus_string)
+        return unsatisfiable_constraints
+
     def main(self, control: clingo.Control, files: Sequence[str]) -> None:
         load_dotenv()
         logger.info(f"Using ExplaidLLM version {version('explaidllm')}")
@@ -90,6 +99,10 @@ class ExplaidLlmApp(Application):
         # Compute MUS if the program is UNSAT
         mus = self.compute_mus(processed_files, ap)
         logger.info(f"Found MUS: {mus}")
+
+        # Compute Unsatisfiable Constraints
+        ucs = self.compute_unsatisfiable_constraints(files, mus)
+        logger.info(f"Found Unsatisfiable Constraints:\n{ucs}")
 
         llm = OpenAIModel(ModelTag.GPT_4O_MINI)
         logger.info("Prompting Model")
