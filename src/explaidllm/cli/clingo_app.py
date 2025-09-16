@@ -1,6 +1,5 @@
-"""
-App Module: clingexplaid CLI clingo app
-"""
+"""App Module: clingexplaid CLI clingo app"""
+
 import logging
 from importlib.metadata import version
 from typing import Dict, Iterable, Optional, Sequence, Tuple
@@ -19,6 +18,7 @@ from ..llms.templates import ExplainTemplate
 from ..utils.logging import DEFAULT_LOGGER_NAME
 
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
+
 
 def render_assumptions(assumptions: Iterable[Tuple[Symbol, bool]]) -> str:
     output = []
@@ -50,7 +50,9 @@ class ExplaidLlmApp(Application):
         return control.solve().satisfiable
 
     @staticmethod
-    def preprocessing_from_files(files: Sequence[str]) -> Tuple[str, AssumptionPreprocessor]:
+    def preprocessing_from_files(
+        files: Sequence[str],
+    ) -> Tuple[str, AssumptionPreprocessor]:
         ap = AssumptionPreprocessor()
         result = None
         if not files:
@@ -63,14 +65,18 @@ class ExplaidLlmApp(Application):
         return result, ap
 
     @staticmethod
-    def compute_mus(program: str, ap: AssumptionPreprocessor) -> Optional[UnsatisfiableSubset]:
+    def compute_mus(
+        program: str, ap: AssumptionPreprocessor
+    ) -> Optional[UnsatisfiableSubset]:
         control = clingo.Control()
         control.configuration.solve.models = 0
         control.add("base", [], program)
         control.ground([("base", [])])
         cc = CoreComputer(control=control, assumption_set=ap.assumptions)
         logger.debug(f"Solving program with assumptions: {ap.assumptions}")
-        with control.solve(assumptions=list(ap.assumptions), yield_=True) as solve_handle:
+        with control.solve(
+            assumptions=list(ap.assumptions), yield_=True
+        ) as solve_handle:
             result = solve_handle.get()
             if result.satisfiable:
                 return None
@@ -79,11 +85,17 @@ class ExplaidLlmApp(Application):
                 return cc.shrink(solve_handle.core())
 
     @staticmethod
-    def compute_unsatisfiable_constraints(files: Sequence[str], mus: UnsatisfiableSubset) -> Dict[int, str]:
-        mus_string = " ".join([f"{'' if a.sign else '-'}{a.symbol}" for a in mus.assumptions])
+    def compute_unsatisfiable_constraints(
+        files: Sequence[str], mus: UnsatisfiableSubset
+    ) -> Dict[int, str]:
+        mus_string = " ".join(
+            [f"{'' if a.sign else '-'}{a.symbol}" for a in mus.assumptions]
+        )
         ucc = UnsatConstraintComputer()
         ucc.parse_files(files)
-        unsatisfiable_constraints = ucc.get_unsat_constraints(assumption_string=mus_string)
+        unsatisfiable_constraints = ucc.get_unsat_constraints(
+            assumption_string=mus_string
+        )
         return unsatisfiable_constraints
 
     def main(self, control: clingo.Control, files: Sequence[str]) -> None:
@@ -106,5 +118,12 @@ class ExplaidLlmApp(Application):
 
         llm = OpenAIModel(ModelTag.GPT_4O_MINI)
         logger.info("Prompting Model")
-        response = llm.prompt_template(template=ExplainTemplate(program="", assumptions=ap.assumptions, mus=mus, unsatisfiable_constraints=ucs.values()))
+        response = llm.prompt_template(
+            template=ExplainTemplate(
+                program="",
+                assumptions=ap.assumptions,
+                mus=mus,
+                unsatisfiable_constraints=ucs.values(),
+            )
+        )
         logger.info(f"Received Response:\n{response}")

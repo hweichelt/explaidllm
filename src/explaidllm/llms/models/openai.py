@@ -27,7 +27,10 @@ class OpenAIModel(AbstractModel):
         return OpenAIModel.transform_output(response.output_text)
 
     def prompt_template(self, template: Template) -> str:
-        return self.prompt(instructions_string=template.compose_instructions(), input_string=template.compose_input())
+        return self.prompt(
+            instructions_string=template.compose_instructions(),
+            input_string=template.compose_input(),
+        )
 
     @staticmethod
     def transform_output(unfiltered_output: str) -> str:
