@@ -1,0 +1,7 @@
+User Input:
+{{
+    "program": "{program}",
+    "assumptions": [{assumptions}],
+    "mus": [{mus}],
+    "unsatisfiable_constraints": [{ucs}],
+}}
