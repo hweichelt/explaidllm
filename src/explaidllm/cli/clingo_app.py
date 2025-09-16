@@ -11,7 +11,10 @@ from clingexplaid.mus.core_computer import UnsatisfiableSubset
 from clingexplaid.preprocessors import AssumptionPreprocessor
 from clingo import Symbol
 from clingo.application import Application
+from dotenv import load_dotenv
 
+from ..llms.models import ModelTag, OpenAIModel
+from ..llms.templates import ExplainTemplate
 from ..utils.logging import DEFAULT_LOGGER_NAME
 
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
@@ -75,6 +78,7 @@ class ExplaidLlmApp(Application):
                 return cc.shrink(solve_handle.core())
 
     def main(self, control: clingo.Control, files: Sequence[str]) -> None:
+        load_dotenv()
         logger.info(f"Using ExplaidLLM version {version('explaidllm')}")
 
         processed_files, ap = ExplaidLlmApp.preprocessing_from_files(files)
@@ -87,5 +91,7 @@ class ExplaidLlmApp(Application):
         mus = self.compute_mus(processed_files, ap)
         logger.info(f"Found MUS: {mus}")
 
-
-        logger.warning("IMPLEMENT EXPLANATION HERE")
+        llm = OpenAIModel(ModelTag.GPT_4O_MINI)
+        logger.info("Prompting Model")
+        response = llm.prompt_template(ExplainTemplate(program="", mus=mus))
+        logger.info(f"Received Response:\n{response}")

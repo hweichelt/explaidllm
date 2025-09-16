@@ -19,6 +19,8 @@ readme = "README.md"
 dependencies = [
 	"clingo>=5.8",
     "clingexplaid>=1.3.5",
+    "openai>=1.107",
+    "python-dotenv>=1.1.1",
     "autoflake",
 ]
 classifiers = [
