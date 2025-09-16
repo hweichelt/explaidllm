@@ -106,5 +106,5 @@ class ExplaidLlmApp(Application):
 
         llm = OpenAIModel(ModelTag.GPT_4O_MINI)
         logger.info("Prompting Model")
-        response = llm.prompt_template(ExplainTemplate(program="", mus=mus))
+        response = llm.prompt_template(template=ExplainTemplate(program="", assumptions=ap.assumptions, mus=mus, unsatisfiable_constraints=ucs.values()))
         logger.info(f"Received Response:\n{response}")

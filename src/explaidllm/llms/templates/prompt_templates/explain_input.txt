@@ -1,1 +1,7 @@
-This is a placeholder input. Just say "Hello World!" back
+User Input:
+{{
+    "program": "{program}",
+    "assumptions": [{assumptions}],
+    "mus": [{mus}],
+    "unsatisfiable_constraints": [{ucs}],
+}}
