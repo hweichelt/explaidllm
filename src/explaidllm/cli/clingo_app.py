@@ -65,7 +65,7 @@ class ExplaidLlmApp(Application):
         control.add("base", [], program)
         control.ground([("base", [])])
         cc = CoreComputer(control=control, assumption_set=ap.assumptions)
-        logger.debug(f"Solving program with assumptions:\n{render_assumptions(ap.assumptions)}")
+        logger.debug(f"Solving program with assumptions: {ap.assumptions}")
         with control.solve(assumptions=list(ap.assumptions), yield_=True) as solve_handle:
             result = solve_handle.get()
             if result.satisfiable:
