@@ -1,7 +1,7 @@
-name: CI
+name: CI Tests
 on: push
 jobs:
-  build:
+  linting:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,5 +14,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install ruff
       # Update output format to enable automatic inline annotations.
-      - name: Run Ruff
+      - name: Run Ruff Check
         run: ruff check --select I --output-format=github .
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+      # Update output format to enable automatic inline annotations.
+      - name: Run Ruff Format
+        run: ruff format --check --diff .
