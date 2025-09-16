@@ -1,10 +1,13 @@
 """App Module: clingexplaid CLI clingo app"""
 
+import asyncio
 import logging
+import sys
 from importlib.metadata import version
-from typing import Dict, Iterable, Optional, Sequence, Tuple
+from typing import Dict, Iterable, Optional, Sequence, Set, Tuple
 
 import clingo
+import cursor
 from clingexplaid.mus import CoreComputer
 from clingexplaid.mus.core_computer import UnsatisfiableSubset
 from clingexplaid.preprocessors import AssumptionPreprocessor
@@ -13,8 +16,9 @@ from clingo import Symbol
 from clingo.application import Application
 from dotenv import load_dotenv
 
-from ..llms.models import ModelTag, OpenAIModel
+from ..llms.models import AbstractModel, ModelTag, OpenAIModel
 from ..llms.templates import ExplainTemplate
+from ..spinner import get_spinner
 from ..utils.logging import DEFAULT_LOGGER_NAME
 
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
@@ -118,12 +122,63 @@ class ExplaidLlmApp(Application):
 
         llm = OpenAIModel(ModelTag.GPT_4O_MINI)
         logger.info("Prompting Model")
-        response = llm.prompt_template(
+
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(
+            self.supervisor(llm, ap.assumptions, mus, ucs.values())
+        )
+        loop.close()
+        print("Answer:", result)
+
+    @staticmethod
+    async def progress_spinner() -> None:
+        spinner_generator = get_spinner()
+        cursor_up = "\x1b[2A"
+        with cursor.HiddenCursor():
+            print("\n")
+            while True:
+                spinner_frame = next(spinner_generator)
+                sys.stdout.write(
+                    f"\r{cursor_up}"
+                    + f"┌───────────────┬─────────────┐\n│ Prompting LLM │ {spinner_frame} │\n└───────────────┴─────────────┘"
+                )
+                sys.stdout.flush()
+                try:
+                    await asyncio.sleep(0.07)
+                except asyncio.CancelledError:
+                    break
+        sys.stdout.write(
+            f"\r{cursor_up}"
+            + f"┌───────────────┬─────────────┐\n│ Prompting LLM │ ✅ Finished │\n└───────────────┴─────────────┘"
+        )
+        print("\n")
+
+    @staticmethod
+    async def prompt_llm(
+        llm: AbstractModel,
+        assumptions: Set[Tuple[Symbol, bool]],
+        mus: UnsatisfiableSubset,
+        ucs: Iterable[str],
+    ) -> str:
+        return await llm.prompt_template(
             template=ExplainTemplate(
                 program="",
-                assumptions=ap.assumptions,
+                assumptions=assumptions,
                 mus=mus,
-                unsatisfiable_constraints=ucs.values(),
+                unsatisfiable_constraints=ucs,
             )
         )
-        logger.info(f"Received Response:\n{response}")
+
+    async def supervisor(
+        self,
+        llm: AbstractModel,
+        assumptions: Set[Tuple[Symbol, bool]],
+        mus: UnsatisfiableSubset,
+        ucs: Iterable[str],
+    ) -> str:
+        spinner = asyncio.ensure_future(self.progress_spinner())
+        result = await self.prompt_llm(
+            llm=llm, assumptions=assumptions, mus=mus, ucs=ucs
+        )
+        spinner.cancel()
+        return result

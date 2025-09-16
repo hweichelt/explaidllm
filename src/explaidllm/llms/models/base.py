@@ -19,11 +19,11 @@ class AbstractModel(ABC):
         self.model_tag: str = getattr(model_tag.value, self.model_tag_key)
 
     @abstractmethod
-    def prompt(self, instructions_string: str, input_string: str) -> str:
+    async def prompt(self, instructions_string: str, input_string: str) -> str:
         """Prompts the language model with the given input string"""
 
     @abstractmethod
-    def prompt_template(self, template: Template) -> str:
+    async def prompt_template(self, template: Template) -> str:
         """Explains an explanation graph"""
 
     @staticmethod
