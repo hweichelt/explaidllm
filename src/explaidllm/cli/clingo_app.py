@@ -71,6 +71,7 @@ class ExplaidLlmApp(Application):
 
         loop = asyncio.get_event_loop()
 
+        # STEP 1 --- Preprocessing
         processed_files, ap = loop.run_until_complete(
             self.execute_with_progress(
                 self.step_pre,
@@ -79,12 +80,12 @@ class ExplaidLlmApp(Application):
                 files=files,
             )
         )
-        # Skip explanation if the Program is SAT
+        # Skip explanation if the program is SAT
         if ExplaidLlmApp.is_satisfiable(files):
             logger.info("Program is satisfiable, no explanation needed :)")
             return
 
-        # Compute MUS if the program is UNSAT
+        # STEP 2 --- MUS Computation
         mus = loop.run_until_complete(
             self.execute_with_progress(
                 self.step_mus,
@@ -96,7 +97,7 @@ class ExplaidLlmApp(Application):
         )
         # logger.info(f"Found MUS: {mus}")
 
-        # Compute Unsatisfiable Constraints
+        # STEP 3 --- UCS Computations
         ucs = loop.run_until_complete(
             self.execute_with_progress(
                 self.step_ucs,
@@ -108,6 +109,7 @@ class ExplaidLlmApp(Application):
         )
         # logger.info(f"Found Unsatisfiable Constraints:\n{ucs}")
 
+        # STEP 4 --- LLM Prompting
         llm = OpenAIModel(ModelTag.GPT_4O_MINI)
         result = loop.run_until_complete(
             self.execute_with_progress(
@@ -130,7 +132,7 @@ class ExplaidLlmApp(Application):
         progress_emoji: str,
         *args: P.args,
         **kwargs: P.kwargs,
-    ) -> Awaitable[T]:
+    ) -> T:
         spinner = asyncio.ensure_future(progress_box(progress_label, progress_emoji))
         result = await function(*args, **kwargs)
         spinner.cancel()
