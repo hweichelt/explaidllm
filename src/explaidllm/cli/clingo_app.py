@@ -25,6 +25,7 @@ from clingexplaid.preprocessors import AssumptionPreprocessor
 from clingexplaid.unsat_constraints import UnsatConstraintComputer
 from clingo import Symbol
 from clingo.application import Application
+from clingo.ast import Location
 from dotenv import load_dotenv
 
 from ..llms.models import AbstractModel, ModelTag, OpenAIModel
@@ -100,7 +101,7 @@ class ExplaidLlmApp(Application):
         logger.debug(f"Found MUS: {mus}")
 
         # STEP 3 --- UCS Computations
-        ucs = loop.run_until_complete(
+        ucs, locations = loop.run_until_complete(
             self.execute_with_progress(
                 self.step_ucs,
                 progress_label="Computing Unsatisfiable Constraints",
@@ -130,9 +131,19 @@ class ExplaidLlmApp(Application):
         result_json = json.loads(result, strict=False)
         explanation = " ".join(result_json["explanation"].replace("\n", "").split())
 
+        c_id, uc = list(ucs.items())[0]
+        constraint = uc
+        position = locations.get(c_id).begin
+
+        sys.stdout.write(
+            render_code_line(
+                line_number=position.line,
+                content=constraint,
+                filename=position.filename,
+                width=100,
+            )
+        )
         sys.stdout.write("\n")
-        sys.stdout.write(" " + render_code_line(12, list(ucs.values())[0], width=100))
-        sys.stdout.write("\n\n")
         sys.stdout.write(render_llm_message(explanation, width=100))
 
         sys.stdout.write("\n\n")
@@ -189,7 +200,7 @@ class ExplaidLlmApp(Application):
     @staticmethod
     async def step_ucs(
         files: Sequence[str], mus: UnsatisfiableSubset
-    ) -> Dict[int, str]:
+    ) -> Tuple[Dict[int, str], Dict[int, Location]]:
         await asyncio.sleep(0.1)  # minimal sleep to make sure progress is drawn
         mus_string = " ".join(
             [f"{'' if a.sign else '-'}{a.symbol}" for a in mus.assumptions]
@@ -199,7 +210,11 @@ class ExplaidLlmApp(Application):
         unsatisfiable_constraints = ucc.get_unsat_constraints(
             assumption_string=mus_string
         )
-        return unsatisfiable_constraints
+        locations = {
+            c_id: ucc.get_constraint_location(c_id)
+            for c_id in unsatisfiable_constraints.keys()
+        }
+        return unsatisfiable_constraints, locations
 
     @staticmethod
     async def step_llm(

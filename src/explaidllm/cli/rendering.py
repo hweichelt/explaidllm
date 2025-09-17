@@ -86,17 +86,40 @@ def render_progress_box(label: str, emoji: str, progress_frame: str):
 
 
 def render_code_line(
-    line_number: int, content: str, width: Optional[int] = None
+    line_number: int,
+    content: str,
+    filename: Optional[str] = None,
+    width: Optional[int] = None,
 ) -> str:
     string_line_number = colored(
-        f"   {line_number} ", fg=shade(COLOR_WHITE, 0.4), bg=shade(COLOR_GRAY, 0.2)
+        f" {str(line_number).rjust(4)} ",
+        fg=shade(COLOR_WHITE, 0.4),
+        bg=shade(COLOR_GRAY, 0.2),
     )
     content_width = width - 6 if width is not None else len(content) + 2
     content_padded = content.ljust(content_width)
     string_content = colored(
         f" {content_padded} ", fg=shade(COLOR_WHITE, 0.6), bg=shade(COLOR_GRAY, 0.3)
     )
-    return string_line_number + string_content
+    if filename is None:
+        line_heading = "\n"
+    else:
+        line_heading = (
+            " " * (width - len(filename))
+            + colored("◢", fg=shade(COLOR_GRAY, 0.3))
+            + colored(
+                f" {filename} ", fg=shade(COLOR_WHITE, 0.4), bg=shade(COLOR_GRAY, 0.3)
+            )
+            + "\n"
+        )
+    line_padding = (
+        " "
+        + colored(" " * 6, bg=shade(COLOR_GRAY, 0.2))
+        + colored(" " * (content_width + 2), bg=shade(COLOR_GRAY, 0.3))
+        + "\n"
+    )
+    line_content = " " + string_line_number + string_content + "\n"
+    return line_heading + line_padding + line_content + line_padding
 
 
 def partition_message(message: str, width: int, line: int) -> str:
