@@ -33,11 +33,11 @@ def colored(string: str, color: Color) -> str:
     return c_string
 
 
-COLOR_BLUE = Color(red=30, green=136, blue=229)
+COLOR_CYAN = Color(red=1, green=87, blue=155)
 COLOR_GRAY = Color(red=100, green=100, blue=100)
 COLOR_GREEN = Color(red=104, green=159, blue=56)
 
-COLOR_SPINNER = COLOR_BLUE
+COLOR_SPINNER = COLOR_CYAN
 COLOR_BORDER = COLOR_GRAY
 
 FINISHED_STRING = colored("✅ Finished", COLOR_GREEN)
