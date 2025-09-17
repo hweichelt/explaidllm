@@ -42,25 +42,29 @@ COLOR_BORDER = COLOR_GRAY
 
 FINISHED_STRING = colored("✅ Finished", COLOR_GREEN)
 
+LENGTH_EMOJI = 2
 
-def render_progress_box(label: str, progress_frame: str):
+
+def render_progress_box(label: str, emoji: str, progress_frame: str):
     c_divider = colored("│", COLOR_BORDER)
+    label_length = LENGTH_EMOJI + 1 + len(label)
     upper_box = (
-        colored("┌─" + "─" * len(label) + "─┬─────────────┐", COLOR_BORDER) + "\n"
+        colored("┌─" + "─" * label_length + "─┬─────────────┐", COLOR_BORDER) + "\n"
     )
     progress = (
         c_divider
+        + f" {emoji}"
         + f" {label} "
         + c_divider
         + f" {colored(progress_frame, COLOR_SPINNER)} "
         + c_divider
         + "\n"
     )
-    lower_box = colored("└─" + "─" * len(label) + "─┴─────────────┘", COLOR_BORDER)
+    lower_box = colored("└─" + "─" * label_length + "─┴─────────────┘", COLOR_BORDER)
     return upper_box + progress + lower_box
 
 
-async def progress_box(label: str):
+async def progress_box(label: str, emoji: str):
     spinner_generator = get_spinner()
     cursor_up = "\x1b[2A"
     with cursor.HiddenCursor():
@@ -68,12 +72,14 @@ async def progress_box(label: str):
         while True:
             spinner_frame = next(spinner_generator)
             sys.stdout.write(
-                f"\r{cursor_up}{render_progress_box(label, spinner_frame)}"
+                f"\r{cursor_up}{render_progress_box(label, emoji, spinner_frame)}"
             )
             sys.stdout.flush()
             try:
                 await asyncio.sleep(0.07)
             except asyncio.CancelledError:
                 break
-    sys.stdout.write(f"\r{cursor_up}{render_progress_box(label, FINISHED_STRING)}")
+    sys.stdout.write(
+        f"\r{cursor_up}{render_progress_box(label, emoji, FINISHED_STRING)}"
+    )
     sys.stdout.write("\n")

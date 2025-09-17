@@ -60,86 +60,60 @@ class ExplaidLlmApp(Application):
     def is_satisfiable(files: Iterable[str]) -> bool:
         control = clingo.Control()
         for file in files:
-            logger.debug(f"Loading file: {file}")
+            # logger.debug(f"Loading file: {file}")
             control.load(file)
         control.ground([("base", [])])
         return control.solve().satisfiable
-
-    @staticmethod
-    def preprocessing_from_files(
-        files: Sequence[str],
-    ) -> Tuple[str, AssumptionPreprocessor]:
-        ap = AssumptionPreprocessor()
-        result = None
-        if not files:
-            logger.info("Reading from -")
-            logger.warning("IMPLEMENT READING FROM STDIN HERE")
-        else:
-            logger.info(f"Reading from {files[0]} {'...' if len(files) > 1 else ''}")
-            result = ap.process_files(list(files))
-            logger.debug(f"Processed Files:\n{result}")
-        return result, ap
-
-    @staticmethod
-    def compute_mus(
-        program: str, ap: AssumptionPreprocessor
-    ) -> Optional[UnsatisfiableSubset]:
-        control = clingo.Control()
-        control.configuration.solve.models = 0
-        control.add("base", [], program)
-        control.ground([("base", [])])
-        cc = CoreComputer(control=control, assumption_set=ap.assumptions)
-        logger.debug(f"Solving program with assumptions: {ap.assumptions}")
-        with control.solve(
-            assumptions=list(ap.assumptions), yield_=True
-        ) as solve_handle:
-            result = solve_handle.get()
-            if result.satisfiable:
-                return None
-            else:
-                logger.debug("Computing MUS of UNSAT Program")
-                return cc.shrink(solve_handle.core())
-
-    @staticmethod
-    def compute_unsatisfiable_constraints(
-        files: Sequence[str], mus: UnsatisfiableSubset
-    ) -> Dict[int, str]:
-        mus_string = " ".join(
-            [f"{'' if a.sign else '-'}{a.symbol}" for a in mus.assumptions]
-        )
-        ucc = UnsatConstraintComputer()
-        ucc.parse_files(files)
-        unsatisfiable_constraints = ucc.get_unsat_constraints(
-            assumption_string=mus_string
-        )
-        return unsatisfiable_constraints
 
     def main(self, control: clingo.Control, files: Sequence[str]) -> None:
         load_dotenv()
         logger.info(f"Using ExplaidLLM version {version('explaidllm')}")
 
-        processed_files, ap = ExplaidLlmApp.preprocessing_from_files(files)
+        loop = asyncio.get_event_loop()
+
+        processed_files, ap = loop.run_until_complete(
+            self.execute_with_progress(
+                self.step_pre,
+                progress_label="Preprocessing files",
+                progress_emoji="⚙️",
+                files=files,
+            )
+        )
         # Skip explanation if the Program is SAT
         if ExplaidLlmApp.is_satisfiable(files):
             logger.info("Program is satisfiable, no explanation needed :)")
             return
 
         # Compute MUS if the program is UNSAT
-        mus = self.compute_mus(processed_files, ap)
-        logger.info(f"Found MUS: {mus}")
+        mus = loop.run_until_complete(
+            self.execute_with_progress(
+                self.step_mus,
+                progress_label="Computing Minimal Unsatisfiable Subset",
+                progress_emoji="🔘",
+                program=processed_files,
+                ap=ap,
+            )
+        )
+        # logger.info(f"Found MUS: {mus}")
 
         # Compute Unsatisfiable Constraints
-        ucs = self.compute_unsatisfiable_constraints(files, mus)
-        logger.info(f"Found Unsatisfiable Constraints:\n{ucs}")
+        ucs = loop.run_until_complete(
+            self.execute_with_progress(
+                self.step_ucs,
+                progress_label="Computing Unsatisfiable Constraints",
+                progress_emoji="⬅️",
+                files=files,
+                mus=mus,
+            )
+        )
+        # logger.info(f"Found Unsatisfiable Constraints:\n{ucs}")
 
         llm = OpenAIModel(ModelTag.GPT_4O_MINI)
-        logger.info("Prompting Model")
-
-        loop = asyncio.get_event_loop()
         result = loop.run_until_complete(
             self.execute_with_progress(
-                self.prompt_llm,
+                self.step_llm,
                 progress_label="Prompting LLM",
+                progress_emoji="🤖",
                 llm=llm,
                 assumptions=ap.assumptions,
                 mus=mus,
@@ -150,7 +124,71 @@ class ExplaidLlmApp(Application):
         print("Answer:", result)
 
     @staticmethod
-    async def prompt_llm(
+    async def execute_with_progress(
+        function: Callable[P, Awaitable[T]],
+        progress_label: str,
+        progress_emoji: str,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Awaitable[T]:
+        spinner = asyncio.ensure_future(progress_box(progress_label, progress_emoji))
+        result = await function(*args, **kwargs)
+        spinner.cancel()
+        return result
+
+    @staticmethod
+    async def step_pre(files: Sequence[str]) -> Tuple[str, AssumptionPreprocessor]:
+        await asyncio.sleep(0.1)  # minimal sleep to make sure progress is drawn
+        ap = AssumptionPreprocessor()
+        result = None
+        if not files:
+            pass
+            # logger.info("Reading from -")
+            # logger.warning("IMPLEMENT READING FROM STDIN HERE")
+        else:
+            # logger.info(f"Reading from {files[0]} {'...' if len(files) > 1 else ''}")
+            result = ap.process_files(list(files))
+            # logger.debug(f"Processed Files:\n{result}")
+        return result, ap
+
+    @staticmethod
+    async def step_mus(
+        program: str, ap: AssumptionPreprocessor
+    ) -> Optional[UnsatisfiableSubset]:
+        await asyncio.sleep(0.1)  # minimal sleep to make sure progress is drawn
+        control = clingo.Control()
+        control.configuration.solve.models = 0
+        control.add("base", [], program)
+        control.ground([("base", [])])
+        cc = CoreComputer(control=control, assumption_set=ap.assumptions)
+        # logger.debug(f"Solving program with assumptions: {ap.assumptions}")
+        with control.solve(
+            assumptions=list(ap.assumptions), yield_=True
+        ) as solve_handle:
+            result = solve_handle.get()
+            if result.satisfiable:
+                return None
+            else:
+                # logger.debug("Computing MUS of UNSAT Program")
+                return cc.shrink(solve_handle.core())
+
+    @staticmethod
+    async def step_ucs(
+        files: Sequence[str], mus: UnsatisfiableSubset
+    ) -> Dict[int, str]:
+        await asyncio.sleep(0.1)  # minimal sleep to make sure progress is drawn
+        mus_string = " ".join(
+            [f"{'' if a.sign else '-'}{a.symbol}" for a in mus.assumptions]
+        )
+        ucc = UnsatConstraintComputer()
+        ucc.parse_files(files)
+        unsatisfiable_constraints = ucc.get_unsat_constraints(
+            assumption_string=mus_string
+        )
+        return unsatisfiable_constraints
+
+    @staticmethod
+    async def step_llm(
         llm: AbstractModel,
         assumptions: Set[Tuple[Symbol, bool]],
         mus: UnsatisfiableSubset,
@@ -164,15 +202,3 @@ class ExplaidLlmApp(Application):
                 unsatisfiable_constraints=ucs,
             )
         )
-
-    @staticmethod
-    async def execute_with_progress(
-        function: Callable[P, Awaitable[T]],
-        progress_label: str,
-        *args: P.args,
-        **kwargs: P.kwargs,
-    ) -> T:
-        spinner = asyncio.ensure_future(progress_box(progress_label))
-        result = await function(*args, **kwargs)
-        spinner.cancel()
-        return result
