@@ -20,16 +20,26 @@ class Color:
     blue: int
 
 
-def e(element: Union[EscapeCode, Color]) -> Optional[str]:
+class ColoringType(Enum):
+    FOREGROUND = "38"
+    BACKGROUND = "48"
+
+
+def e(
+    element: Union[EscapeCode, Color],
+    coloring_type: ColoringType = ColoringType.FOREGROUND,
+) -> Optional[str]:
     if isinstance(element, EscapeCode):
         return f"\033[{element.value}m"
     elif isinstance(element, Color):
-        return f"\033[38;2;{element.red};{element.green};{element.blue}m"
+        return f"\033[{coloring_type.value};2;{element.red};{element.green};{element.blue}m"
     return None
 
 
-def colored(string: str, color: Color) -> str:
-    c_string = f"{e(color)}{string}{e(EscapeCode.RESET)}"
+def colored(string: str, fg: Optional[Color] = None, bg: Optional[Color] = None) -> str:
+    fg_string = "" if fg is None else e(fg, coloring_type=ColoringType.FOREGROUND)
+    bg_string = "" if bg is None else e(bg, coloring_type=ColoringType.BACKGROUND)
+    c_string = f"{bg_string}{fg_string}{string}{e(EscapeCode.RESET)}"
     return c_string
 
 
@@ -40,27 +50,27 @@ COLOR_GREEN = Color(red=104, green=159, blue=56)
 COLOR_SPINNER = COLOR_CYAN
 COLOR_BORDER = COLOR_GRAY
 
-FINISHED_STRING = colored("✅ Finished", COLOR_GREEN)
+FINISHED_STRING = colored("✅ Finished", fg=COLOR_GREEN)
 
 LENGTH_EMOJI = 2
 
 
 def render_progress_box(label: str, emoji: str, progress_frame: str):
-    c_divider = colored("│", COLOR_BORDER)
+    c_divider = colored("│", fg=COLOR_BORDER)
     label_length = LENGTH_EMOJI + 1 + len(label)
     upper_box = (
-        colored("┌─" + "─" * label_length + "─┬─────────────┐", COLOR_BORDER) + "\n"
+        colored("┌─" + "─" * label_length + "─┬─────────────┐", fg=COLOR_BORDER) + "\n"
     )
     progress = (
         c_divider
         + f" {emoji}"
         + f" {label} "
         + c_divider
-        + f" {colored(progress_frame, COLOR_SPINNER)} "
+        + f" {colored(progress_frame, fg=COLOR_SPINNER)} "
         + c_divider
         + "\n"
     )
-    lower_box = colored("└─" + "─" * label_length + "─┴─────────────┘", COLOR_BORDER)
+    lower_box = colored("└─" + "─" * label_length + "─┴─────────────┘", fg=COLOR_BORDER)
     return upper_box + progress + lower_box
 
 
