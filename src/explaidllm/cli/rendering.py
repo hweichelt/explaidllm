@@ -64,6 +64,10 @@ def render_progress_box(label: str, emoji: str, progress_frame: str):
     return upper_box + progress + lower_box
 
 
+def render_code_line(line_number: int, content: str) -> str:
+    return f" {line_number} ▏{content}"
+
+
 async def progress_box(label: str, emoji: str):
     spinner_generator = get_spinner()
     cursor_up = "\x1b[2A"

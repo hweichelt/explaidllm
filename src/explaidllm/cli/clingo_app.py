@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import sys
 from importlib.metadata import version
 from typing import (
     Awaitable,
@@ -28,7 +29,7 @@ from dotenv import load_dotenv
 from ..llms.models import AbstractModel, ModelTag, OpenAIModel
 from ..llms.templates import ExplainTemplate
 from ..utils.logging import DEFAULT_LOGGER_NAME
-from .rendering import progress_box
+from .rendering import progress_box, render_code_line
 
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
 
@@ -122,7 +123,13 @@ class ExplaidLlmApp(Application):
                 ucs=ucs.values(),
             )
         )
+
         loop.close()
+
+        sys.stdout.write(render_code_line(12, list(ucs.values())[0]))
+
+        sys.stdout.write("\n\n")
+
         print("Answer:", result)
 
     @staticmethod
