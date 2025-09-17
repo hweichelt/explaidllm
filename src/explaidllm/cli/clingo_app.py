@@ -20,6 +20,7 @@ from ..llms.models import AbstractModel, ModelTag, OpenAIModel
 from ..llms.templates import ExplainTemplate
 from ..spinner import get_spinner
 from ..utils.logging import DEFAULT_LOGGER_NAME
+from .rendering import render_progress_box
 
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
 
@@ -139,8 +140,7 @@ class ExplaidLlmApp(Application):
             while True:
                 spinner_frame = next(spinner_generator)
                 sys.stdout.write(
-                    f"\r{cursor_up}"
-                    + f"┌───────────────┬─────────────┐\n│ Prompting LLM │ \033[38;2;30;136;229m{spinner_frame}\033[0m │\n└───────────────┴─────────────┘"
+                    f"\r{cursor_up}{render_progress_box('Prompting LLM', spinner_frame)}"
                 )
                 sys.stdout.flush()
                 try:
@@ -148,8 +148,7 @@ class ExplaidLlmApp(Application):
                 except asyncio.CancelledError:
                     break
         sys.stdout.write(
-            f"\r{cursor_up}"
-            + f"┌───────────────┬─────────────┐\n│ Prompting LLM │ ✅ Finished │\n└───────────────┴─────────────┘"
+            f"\r{cursor_up}{render_progress_box('Prompting LLM', '✅ Finished')}"
         )
         print("\n")
 
