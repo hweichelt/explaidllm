@@ -1,6 +1,7 @@
 """App Module: clingexplaid CLI clingo app"""
 
 import asyncio
+import json
 import logging
 import sys
 from importlib.metadata import version
@@ -26,10 +27,10 @@ from clingo import Symbol
 from clingo.application import Application
 from dotenv import load_dotenv
 
-from ..llms.models import AbstractModel
+from ..llms.models import AbstractModel, ModelTag, OpenAIModel
 from ..llms.templates import ExplainTemplate
 from ..utils.logging import DEFAULT_LOGGER_NAME
-from .rendering import progress_box, render_code_line
+from .rendering import progress_box, render_code_line, render_llm_message
 
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
 
@@ -110,27 +111,31 @@ class ExplaidLlmApp(Application):
         )
         logger.debug(f"Found Unsatisfiable Constraints:\n{ucs}")
 
-        # # STEP 4 --- LLM Prompting
-        # llm = OpenAIModel(ModelTag.GPT_4O_MINI)
-        # result = loop.run_until_complete(
-        #     self.execute_with_progress(
-        #         self.step_llm,
-        #         progress_label="Prompting LLM",
-        #         progress_emoji="🤖",
-        #         llm=llm,
-        #         assumptions=ap.assumptions,
-        #         mus=mus,
-        #         ucs=ucs.values(),
-        #     )
-        # )
+        # STEP 4 --- LLM Prompting
+        llm = OpenAIModel(ModelTag.GPT_4O_MINI)
+        result = loop.run_until_complete(
+            self.execute_with_progress(
+                self.step_llm,
+                progress_label="Prompting LLM",
+                progress_emoji="🤖",
+                llm=llm,
+                assumptions=ap.assumptions,
+                mus=mus,
+                ucs=ucs.values(),
+            )
+        )
 
         loop.close()
+
+        result_json = json.loads(result, strict=False)
+        explanation = " ".join(result_json["explanation"].replace("\n", "").split())
 
         sys.stdout.write("\n")
         sys.stdout.write(" " + render_code_line(12, list(ucs.values())[0], width=100))
         sys.stdout.write("\n\n")
+        sys.stdout.write(render_llm_message(explanation, width=100))
 
-        # print("Answer:", result)
+        sys.stdout.write("\n\n")
 
     @staticmethod
     async def execute_with_progress(

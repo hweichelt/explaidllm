@@ -1,8 +1,9 @@
 import asyncio
+import math
 import sys
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 import cursor
 
@@ -90,14 +91,56 @@ def render_code_line(
     string_line_number = colored(
         f"   {line_number} ", fg=shade(COLOR_WHITE, 0.4), bg=shade(COLOR_GRAY, 0.2)
     )
-    content_width = (
-        width - len(string_line_number) if width is not None else len(content) + 2
-    )
+    content_width = width - 6 if width is not None else len(content) + 2
     content_padded = content.ljust(content_width)
     string_content = colored(
         f" {content_padded} ", fg=shade(COLOR_WHITE, 0.6), bg=shade(COLOR_GRAY, 0.3)
     )
     return string_line_number + string_content
+
+
+def partition_message(message: str, width: int, line: int) -> str:
+    return message[line * width : (line + 1) * width].ljust(width)
+
+
+def message_partitions(message: str, width: int) -> List[str]:
+    lines = []
+    n_lines = int(math.ceil(len(message) / width))
+    for line in range(n_lines):
+        lines.append(partition_message(message, width, line))
+    if len(lines) < 2:
+        lines.append("".ljust(width))
+    return lines
+
+
+def render_llm_message(message: str, width: int) -> str:
+    line_1_avatar = " " + colored("      ", bg=shade(COLOR_GRAY, 0.2))
+    line_2_avatar = " " + colored("  🤖  ", bg=shade(COLOR_GRAY, 0.2))
+    line_3_avatar = " " + colored("      ", bg=shade(COLOR_GRAY, 0.2))
+    width_avatar = 1 + 6
+    width_text_box = width - 6
+    line_1_message = colored(" ◥", fg=shade(COLOR_GRAY, 0.2)) + colored(
+        " " * width_text_box, bg=shade(COLOR_GRAY, 0.2)
+    )
+    line_n_message = colored(" " * width_text_box, bg=shade(COLOR_GRAY, 0.2))
+
+    output = ""
+    output += line_1_avatar + line_1_message + "\n"
+    for i, line in enumerate(message_partitions(message, width=width_text_box - 4)):
+        if i == 0:
+            front = line_2_avatar
+        elif i == 1:
+            front = line_3_avatar
+        else:
+            front = " " * width_avatar
+        output += (
+            front
+            + "  "
+            + colored("  " + line + "  ", fg=COLOR_GRAY, bg=shade(COLOR_GRAY, 0.2))
+            + "\n"
+        )
+    output += " " * width_avatar + "  " + line_n_message + "\n"
+    return output
 
 
 async def progress_box(label: str, emoji: str):
