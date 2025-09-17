@@ -1,6 +1,12 @@
+import asyncio
+import sys
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Union
+
+import cursor
+
+from ..spinner import get_spinner
 
 
 class EscapeCode(Enum):
@@ -14,13 +20,6 @@ class Color:
     blue: int
 
 
-COLOR_BLUE = Color(red=30, green=136, blue=229)
-COLOR_GRAY = Color(red=100, green=100, blue=100)
-
-COLOR_SPINNER = COLOR_BLUE
-COLOR_BORDER = COLOR_GRAY
-
-
 def e(element: Union[EscapeCode, Color]) -> Optional[str]:
     if isinstance(element, EscapeCode):
         return f"\033[{element.value}m"
@@ -32,6 +31,16 @@ def e(element: Union[EscapeCode, Color]) -> Optional[str]:
 def colored(string: str, color: Color) -> str:
     c_string = f"{e(color)}{string}{e(EscapeCode.RESET)}"
     return c_string
+
+
+COLOR_BLUE = Color(red=30, green=136, blue=229)
+COLOR_GRAY = Color(red=100, green=100, blue=100)
+COLOR_GREEN = Color(red=104, green=159, blue=56)
+
+COLOR_SPINNER = COLOR_BLUE
+COLOR_BORDER = COLOR_GRAY
+
+FINISHED_STRING = colored("✅ Finished", COLOR_GREEN)
 
 
 def render_progress_box(label: str, progress_frame: str):
@@ -49,3 +58,22 @@ def render_progress_box(label: str, progress_frame: str):
     )
     lower_box = colored("└─" + "─" * len(label) + "─┴─────────────┘", COLOR_BORDER)
     return upper_box + progress + lower_box
+
+
+async def progress_box(label: str):
+    spinner_generator = get_spinner()
+    cursor_up = "\x1b[2A"
+    with cursor.HiddenCursor():
+        sys.stdout.write("\n\n")
+        while True:
+            spinner_frame = next(spinner_generator)
+            sys.stdout.write(
+                f"\r{cursor_up}{render_progress_box(label, spinner_frame)}"
+            )
+            sys.stdout.flush()
+            try:
+                await asyncio.sleep(0.07)
+            except asyncio.CancelledError:
+                break
+    sys.stdout.write(f"\r{cursor_up}{render_progress_box(label, FINISHED_STRING)}")
+    sys.stdout.write("\n")

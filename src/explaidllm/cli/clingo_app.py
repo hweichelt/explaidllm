@@ -2,12 +2,10 @@
 
 import asyncio
 import logging
-import sys
 from importlib.metadata import version
 from typing import Dict, Iterable, Optional, Sequence, Set, Tuple
 
 import clingo
-import cursor
 from clingexplaid.mus import CoreComputer
 from clingexplaid.mus.core_computer import UnsatisfiableSubset
 from clingexplaid.preprocessors import AssumptionPreprocessor
@@ -18,9 +16,8 @@ from dotenv import load_dotenv
 
 from ..llms.models import AbstractModel, ModelTag, OpenAIModel
 from ..llms.templates import ExplainTemplate
-from ..spinner import get_spinner
 from ..utils.logging import DEFAULT_LOGGER_NAME
-from .rendering import render_progress_box
+from .rendering import progress_box
 
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
 
@@ -132,27 +129,6 @@ class ExplaidLlmApp(Application):
         print("Answer:", result)
 
     @staticmethod
-    async def progress_spinner() -> None:
-        spinner_generator = get_spinner()
-        cursor_up = "\x1b[2A"
-        with cursor.HiddenCursor():
-            print("\n")
-            while True:
-                spinner_frame = next(spinner_generator)
-                sys.stdout.write(
-                    f"\r{cursor_up}{render_progress_box('Prompting LLM', spinner_frame)}"
-                )
-                sys.stdout.flush()
-                try:
-                    await asyncio.sleep(0.07)
-                except asyncio.CancelledError:
-                    break
-        sys.stdout.write(
-            f"\r{cursor_up}{render_progress_box('Prompting LLM', '✅ Finished')}"
-        )
-        print("\n")
-
-    @staticmethod
     async def prompt_llm(
         llm: AbstractModel,
         assumptions: Set[Tuple[Symbol, bool]],
@@ -175,7 +151,7 @@ class ExplaidLlmApp(Application):
         mus: UnsatisfiableSubset,
         ucs: Iterable[str],
     ) -> str:
-        spinner = asyncio.ensure_future(self.progress_spinner())
+        spinner = asyncio.ensure_future(progress_box("Prompting LLM"))
         result = await self.prompt_llm(
             llm=llm, assumptions=assumptions, mus=mus, ucs=ucs
         )
