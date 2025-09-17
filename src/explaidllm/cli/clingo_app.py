@@ -72,6 +72,8 @@ class ExplaidLlmApp(Application):
         load_dotenv()
         logger.debug(f"Using ExplaidLLM version {version('explaidllm')}")
 
+        sys.stdout.write("\n")
+
         loop = asyncio.get_event_loop()
 
         # STEP 1 --- Preprocessing
