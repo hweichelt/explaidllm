@@ -3,7 +3,18 @@
 import asyncio
 import logging
 from importlib.metadata import version
-from typing import Dict, Iterable, Optional, Sequence, Set, Tuple
+from typing import (
+    Awaitable,
+    Callable,
+    Dict,
+    Iterable,
+    Optional,
+    ParamSpec,
+    Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+)
 
 import clingo
 from clingexplaid.mus import CoreComputer
@@ -20,6 +31,9 @@ from ..utils.logging import DEFAULT_LOGGER_NAME
 from .rendering import progress_box
 
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
+
+T = TypeVar("T")
+P = ParamSpec("P")
 
 
 def render_assumptions(assumptions: Iterable[Tuple[Symbol, bool]]) -> str:
@@ -123,7 +137,14 @@ class ExplaidLlmApp(Application):
 
         loop = asyncio.get_event_loop()
         result = loop.run_until_complete(
-            self.supervisor(llm, ap.assumptions, mus, ucs.values())
+            self.execute_with_progress(
+                self.prompt_llm,
+                progress_label="Prompting LLM",
+                llm=llm,
+                assumptions=ap.assumptions,
+                mus=mus,
+                ucs=ucs.values(),
+            )
         )
         loop.close()
         print("Answer:", result)
@@ -144,16 +165,14 @@ class ExplaidLlmApp(Application):
             )
         )
 
-    async def supervisor(
-        self,
-        llm: AbstractModel,
-        assumptions: Set[Tuple[Symbol, bool]],
-        mus: UnsatisfiableSubset,
-        ucs: Iterable[str],
-    ) -> str:
-        spinner = asyncio.ensure_future(progress_box("Prompting LLM"))
-        result = await self.prompt_llm(
-            llm=llm, assumptions=assumptions, mus=mus, ucs=ucs
-        )
+    @staticmethod
+    async def execute_with_progress(
+        function: Callable[P, Awaitable[T]],
+        progress_label: str,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> T:
+        spinner = asyncio.ensure_future(progress_box(progress_label))
+        result = await function(*args, **kwargs)
         spinner.cancel()
         return result
