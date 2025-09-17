@@ -2,7 +2,7 @@
 
 import os
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from ..templates import Template
 from .base import AbstractModel
@@ -16,18 +16,18 @@ class OpenAIModel(AbstractModel):
 
     def __init__(self, model_tag: ModelTag):
         super().__init__(model_tag)
-        self._client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        self._client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-    def prompt(self, instructions_string: str, input_string: str) -> str:
-        response = self._client.responses.create(
+    async def prompt(self, instructions_string: str, input_string: str) -> str:
+        response = await self._client.responses.create(
             model=self.model_tag,
             instructions=instructions_string,
             input=input_string,
         )
         return OpenAIModel.transform_output(response.output_text)
 
-    def prompt_template(self, template: Template) -> str:
-        return self.prompt(
+    async def prompt_template(self, template: Template) -> str:
+        return await self.prompt(
             instructions_string=template.compose_instructions(),
             input_string=template.compose_input(),
         )
