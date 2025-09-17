@@ -26,7 +26,7 @@ from clingo import Symbol
 from clingo.application import Application
 from dotenv import load_dotenv
 
-from ..llms.models import AbstractModel, ModelTag, OpenAIModel
+from ..llms.models import AbstractModel
 from ..llms.templates import ExplainTemplate
 from ..utils.logging import DEFAULT_LOGGER_NAME
 from .rendering import progress_box, render_code_line
@@ -110,27 +110,27 @@ class ExplaidLlmApp(Application):
         )
         logger.debug(f"Found Unsatisfiable Constraints:\n{ucs}")
 
-        # STEP 4 --- LLM Prompting
-        llm = OpenAIModel(ModelTag.GPT_4O_MINI)
-        result = loop.run_until_complete(
-            self.execute_with_progress(
-                self.step_llm,
-                progress_label="Prompting LLM",
-                progress_emoji="🤖",
-                llm=llm,
-                assumptions=ap.assumptions,
-                mus=mus,
-                ucs=ucs.values(),
-            )
-        )
+        # # STEP 4 --- LLM Prompting
+        # llm = OpenAIModel(ModelTag.GPT_4O_MINI)
+        # result = loop.run_until_complete(
+        #     self.execute_with_progress(
+        #         self.step_llm,
+        #         progress_label="Prompting LLM",
+        #         progress_emoji="🤖",
+        #         llm=llm,
+        #         assumptions=ap.assumptions,
+        #         mus=mus,
+        #         ucs=ucs.values(),
+        #     )
+        # )
 
         loop.close()
 
-        sys.stdout.write(render_code_line(12, list(ucs.values())[0]))
-
+        sys.stdout.write("\n")
+        sys.stdout.write(" " + render_code_line(12, list(ucs.values())[0], width=100))
         sys.stdout.write("\n\n")
 
-        print("Answer:", result)
+        # print("Answer:", result)
 
     @staticmethod
     async def execute_with_progress(
