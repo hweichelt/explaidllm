@@ -140,7 +140,7 @@ class ExplaidLlmApp(Application):
                 spinner_frame = next(spinner_generator)
                 sys.stdout.write(
                     f"\r{cursor_up}"
-                    + f"┌───────────────┬─────────────┐\n│ Prompting LLM │ {spinner_frame} │\n└───────────────┴─────────────┘"
+                    + f"┌───────────────┬─────────────┐\n│ Prompting LLM │ \033[38;2;30;136;229m{spinner_frame}\033[0m │\n└───────────────┴─────────────┘"
                 )
                 sys.stdout.flush()
                 try:
