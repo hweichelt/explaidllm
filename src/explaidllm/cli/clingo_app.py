@@ -60,14 +60,14 @@ class ExplaidLlmApp(Application):
     def is_satisfiable(files: Iterable[str]) -> bool:
         control = clingo.Control()
         for file in files:
-            # logger.debug(f"Loading file: {file}")
+            logger.debug(f"Loading file: {file}")
             control.load(file)
         control.ground([("base", [])])
         return control.solve().satisfiable
 
     def main(self, control: clingo.Control, files: Sequence[str]) -> None:
         load_dotenv()
-        logger.info(f"Using ExplaidLLM version {version('explaidllm')}")
+        logger.debug(f"Using ExplaidLLM version {version('explaidllm')}")
 
         loop = asyncio.get_event_loop()
 
@@ -95,7 +95,7 @@ class ExplaidLlmApp(Application):
                 ap=ap,
             )
         )
-        # logger.info(f"Found MUS: {mus}")
+        logger.debug(f"Found MUS: {mus}")
 
         # STEP 3 --- UCS Computations
         ucs = loop.run_until_complete(
@@ -107,7 +107,7 @@ class ExplaidLlmApp(Application):
                 mus=mus,
             )
         )
-        # logger.info(f"Found Unsatisfiable Constraints:\n{ucs}")
+        logger.debug(f"Found Unsatisfiable Constraints:\n{ucs}")
 
         # STEP 4 --- LLM Prompting
         llm = OpenAIModel(ModelTag.GPT_4O_MINI)
@@ -145,12 +145,12 @@ class ExplaidLlmApp(Application):
         result = None
         if not files:
             pass
-            # logger.info("Reading from -")
-            # logger.warning("IMPLEMENT READING FROM STDIN HERE")
+            logger.debug("Reading from -")
+            logger.warning("IMPLEMENT READING FROM STDIN HERE")
         else:
-            # logger.info(f"Reading from {files[0]} {'...' if len(files) > 1 else ''}")
+            logger.debug(f"Reading from {files[0]} {'...' if len(files) > 1 else ''}")
             result = ap.process_files(list(files))
-            # logger.debug(f"Processed Files:\n{result}")
+            logger.debug(f"Processed Files:\n{result}")
         return result, ap
 
     @staticmethod
@@ -163,7 +163,7 @@ class ExplaidLlmApp(Application):
         control.add("base", [], program)
         control.ground([("base", [])])
         cc = CoreComputer(control=control, assumption_set=ap.assumptions)
-        # logger.debug(f"Solving program with assumptions: {ap.assumptions}")
+        logger.debug(f"Solving program with assumptions: {ap.assumptions}")
         with control.solve(
             assumptions=list(ap.assumptions), yield_=True
         ) as solve_handle:
@@ -171,7 +171,7 @@ class ExplaidLlmApp(Application):
             if result.satisfiable:
                 return None
             else:
-                # logger.debug("Computing MUS of UNSAT Program")
+                logger.debug("Computing MUS of UNSAT Program")
                 return cc.shrink(solve_handle.core())
 
     @staticmethod

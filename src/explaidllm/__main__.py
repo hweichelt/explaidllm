@@ -8,8 +8,8 @@ from .utils.logging import setup_logger
 
 
 def main():
-    logger = setup_logger(level=logging.DEBUG)
-    logger.info("Starting ExplaidLLM")
+    logger = setup_logger(level=logging.INFO)
+    logger.debug("Starting ExplaidLLM")
     clingo_main(ExplaidLlmApp(sys.argv[0]), sys.argv[1:] + ["-V0"])
 
 
