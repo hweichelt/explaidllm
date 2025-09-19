@@ -33,12 +33,15 @@ from ..llms.models import AbstractModel, ModelTag, OpenAIModel
 from ..llms.templates import ExplainTemplate
 from ..utils.logging import DEFAULT_LOGGER_NAME
 from .rendering import (
+    COLOR_GRAY,
     COLOR_MESSAGE,
     COLOR_MESSAGE_TEXT,
     COLOR_MUS,
+    COLOR_WHITE,
     colored,
     progress_box,
     render_code_line,
+    render_details,
     render_llm_message,
 )
 
@@ -147,6 +150,12 @@ class ExplaidLlmApp(Application):
                 files=files,
             )
         )
+        sys.stdout.write("\n")
+        sys.stdout.write(
+            render_details(files, width=100, fg=COLOR_WHITE, bg=COLOR_GRAY)
+        )
+        sys.stdout.write("\n\n")
+
         # Skip explanation if the program is SAT
         if ExplaidLlmApp.is_satisfiable(files):
             logger.info("Program is satisfiable, no explanation needed :)")
@@ -170,6 +179,16 @@ class ExplaidLlmApp(Application):
         )
         self._mus = mus
         logger.debug(f"Found MUS: {mus}")
+        sys.stdout.write("\n")
+        sys.stdout.write(
+            render_details(
+                [str(a.symbol) for a in mus.assumptions],
+                width=100,
+                fg=COLOR_WHITE,
+                bg=COLOR_MUS,
+            )
+        )
+        sys.stdout.write("\n\n")
 
         # STEP 3 --- UCS Computations
         ucs, locations = loop.run_until_complete(

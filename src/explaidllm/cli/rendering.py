@@ -2,7 +2,7 @@ import asyncio
 import sys
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, List, Optional, Union
+from typing import Callable, Iterable, List, Optional, Union
 
 import cursor
 
@@ -148,7 +148,7 @@ def message_partitions(
     words = message.split()
     lines = []
     current_line = []
-    for word in words:
+    for i, word in enumerate(words):
         current_line_length = sum([len(w) for w in current_line]) + max(
             len(current_line) - 1, 0
         )
@@ -161,6 +161,12 @@ def message_partitions(
                     line_string = line_string.replace(w, word_highlight_fn(w))
             lines.append(line_string)
             current_line = [word]
+    # FLUSH OUT REMAINING LINE
+    line_string = " ".join(current_line).ljust(width)
+    if word_highlight_fn is not None:
+        for w in current_line:
+            line_string = line_string.replace(w, word_highlight_fn(w))
+    lines.append(line_string)
     return lines
 
 
@@ -198,6 +204,22 @@ def render_llm_message(
         )
     output += " " * width_avatar + "  " + line_n_message + "\n"
     return output
+
+
+def highlight_detail(word: str, fg: Color, bg: Color) -> str:
+    return colored(f" {word} ", fg=fg, bg=bg)
+
+
+def render_details(
+    detail_strings: Iterable[str], width: int, fg: Color, bg: Color
+) -> str:
+    lines = message_partitions(
+        " ".join(detail_strings),
+        width=width,
+        word_highlight_fn=lambda x: highlight_detail(x, fg, bg),
+    )
+    lines_indented = [f"  {line}" for line in lines]
+    return "\n".join(lines_indented)
 
 
 async def progress_box(label: str, emoji: str):
