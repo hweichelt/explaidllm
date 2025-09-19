@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import re
 import sys
 from importlib.metadata import version
 from typing import (
@@ -21,7 +22,7 @@ from typing import (
 import clingo
 from clingexplaid.mus import CoreComputer
 from clingexplaid.mus.core_computer import UnsatisfiableSubset
-from clingexplaid.preprocessors import AssumptionPreprocessor
+from clingexplaid.preprocessors import AssumptionPreprocessor, FilterSignature
 from clingexplaid.unsat_constraints import UnsatConstraintComputer
 from clingo import Symbol
 from clingo.application import Application
@@ -54,10 +55,51 @@ class ExplaidLlmApp(Application):
     """
 
     def __init__(self, name: str) -> None:
-        pass
+        self._assumption_signatures: Set[Tuple[str, int]] = set()
+        self._llm_api_key: Optional[str] = None
 
-    # def register_options(self, options: clingo.ApplicationOptions) -> None:
-    #     group = "ExplaidLLM Methods"
+    def register_options(self, options: clingo.ApplicationOptions) -> None:
+        group = "ExplaidLLM Options"
+
+        options.add(
+            group,
+            "assumption-signature,a",
+            "Facts matching with this signature will be converted to assumptions for finding a MUS "
+            "(format: <name>/<arity>, default: all facts)",
+            self._parse_assumption_signature,
+            multi=True,
+        )
+
+        options.add(
+            group,
+            "llm-api-key,k",
+            "API Key for prompting the LLM",
+            self._parse_llm_api_key,
+        )
+
+    @staticmethod
+    def _parse_signature(signature_string: str) -> Tuple[str, int]:
+        match_result = re.match(r"^([a-zA-Z]+)/([0-9]+)$", signature_string)
+        if match_result is None:
+            raise ValueError("Wrong signature Format")
+        return match_result.group(1), int(match_result.group(2))
+
+    def _parse_assumption_signature(self, assumption_signature: str) -> bool:
+        assumption_signature_string = assumption_signature.replace("=", "").strip()
+        try:
+            signature, arity = self._parse_signature(assumption_signature_string)
+        except ValueError:
+            print(
+                "PARSE ERROR: Wrong signature format. The assumption signatures have to follow the format "
+                "<assumption-name>/<arity>"
+            )
+            return False
+        self._assumption_signatures.add((signature, arity))
+        return True
+
+    def _parse_llm_api_key(self, llm_api_key: str) -> bool:
+        self._llm_api_key = llm_api_key.replace("=", "").strip()
+        return True
 
     @staticmethod
     def is_satisfiable(files: Iterable[str]) -> bool:
@@ -82,12 +124,19 @@ class ExplaidLlmApp(Application):
                 self.step_pre,
                 progress_label="Preprocessing files",
                 progress_emoji="⚙️",
+                assumption_signatures=self._assumption_signatures,
                 files=files,
             )
         )
         # Skip explanation if the program is SAT
         if ExplaidLlmApp.is_satisfiable(files):
             logger.info("Program is satisfiable, no explanation needed :)")
+            return
+        if len(ap.assumptions) == 0:
+            logger.info(
+                "No assumptions for MUS computation found, either your program has no convertable facts or your "
+                "assumption signature filters are too restrictive."
+            )
             return
 
         # STEP 2 --- MUS Computation
@@ -115,7 +164,7 @@ class ExplaidLlmApp(Application):
         logger.debug(f"Found Unsatisfiable Constraints:\n{ucs}")
 
         # STEP 4 --- LLM Prompting
-        llm = OpenAIModel(ModelTag.GPT_4O_MINI)
+        llm = OpenAIModel(ModelTag.GPT_4O_MINI, api_key=self._llm_api_key)
         result = loop.run_until_complete(
             self.execute_with_progress(
                 self.step_llm,
@@ -164,9 +213,19 @@ class ExplaidLlmApp(Application):
         return result
 
     @staticmethod
-    async def step_pre(files: Sequence[str]) -> Tuple[str, AssumptionPreprocessor]:
+    async def step_pre(
+        files: Sequence[str],
+        assumption_signatures: Optional[Set[Tuple[str, int]]] = None,
+    ) -> Tuple[str, AssumptionPreprocessor]:
         await asyncio.sleep(0.1)  # minimal sleep to make sure progress is drawn
-        ap = AssumptionPreprocessor()
+        assumption_filters = [
+            FilterSignature(name=name, arity=arity)
+            for (name, arity) in assumption_signatures
+        ]
+        assumption_filters = (
+            None if len(assumption_filters) == 0 else assumption_filters
+        )
+        ap = AssumptionPreprocessor(filters=assumption_filters)
         result = None
         if not files:
             pass
@@ -195,6 +254,11 @@ class ExplaidLlmApp(Application):
             result = solve_handle.get()
             if result.satisfiable:
                 return None
+            elif len(solve_handle.core()) == 0:
+                logger.debug(
+                    f"No unsatisfiable core found, probably because of too restrictive assumption filters"
+                )
+                return UnsatisfiableSubset(set(), minimal=False)
             else:
                 logger.debug("Computing MUS of UNSAT Program")
                 return cc.shrink(solve_handle.core())
