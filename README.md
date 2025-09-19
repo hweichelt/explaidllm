@@ -9,11 +9,15 @@ Unsatisfiable Subset (MUS) functionalities of `clingexplaid` together with the n
 
 ### From Source
 
-`pip install .`
+```bash
+pip install .
+```
 
 ### From PyPi
 
-`coming soon`
+```bash
+pip install explaidllm
+```
 
 ## Configuration
 
