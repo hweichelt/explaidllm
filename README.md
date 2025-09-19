@@ -17,9 +17,12 @@ Unsatisfiable Subset (MUS) functionalities of `clingexplaid` together with the n
 
 ## Configuration
 
+> [!NOTE]
+> Currently ExplaidLLM only supports the OpenAI LLM API. The implementation of other API's can be requested through Issues.
+
 ### LLM API
 
-Before using ExplaidLLM you need to store your API Key to prompt your LLM of choice (Currently only OpenAI).
+Before using ExplaidLLM you need to store your API Key to prompt your LLM of choice.
 You can do this in two different ways:
 
 #### Using a `.env` file
