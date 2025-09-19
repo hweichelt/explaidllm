@@ -37,6 +37,10 @@ classifiers = [
     "Typing :: Typed",
 ]
 
+[tool.setuptools_scm]
+version_scheme = "python-simplified-semver"
+local_scheme = "no-local-version"
+
 [project.urls]
 Homepage = "https://github.com/hweichelt/explaidllm"
 Source = "https://github.com/hweichelt/explaidllm"
