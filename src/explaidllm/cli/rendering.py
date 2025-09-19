@@ -2,7 +2,7 @@ import asyncio
 import sys
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, Union
+from typing import Callable, List, Optional, Union
 
 import cursor
 
@@ -36,24 +36,28 @@ def e(
     return None
 
 
-def colored(string: str, fg: Optional[Color] = None, bg: Optional[Color] = None) -> str:
+def colored(
+    string: str,
+    fg: Optional[Color] = None,
+    bg: Optional[Color] = None,
+    next_fg: Optional[Color] = None,
+    next_bg: Optional[Color] = None,
+) -> str:
     fg_string = "" if fg is None else e(fg, coloring_type=ColoringType.FOREGROUND)
     bg_string = "" if bg is None else e(bg, coloring_type=ColoringType.BACKGROUND)
+    next_fg_string = (
+        "" if next_fg is None else e(next_fg, coloring_type=ColoringType.FOREGROUND)
+    )
+    next_bg_string = (
+        "" if next_bg is None else e(next_bg, coloring_type=ColoringType.BACKGROUND)
+    )
+
     c_string = f"{bg_string}{fg_string}{string}{e(EscapeCode.RESET)}"
+    if next_bg is not None:
+        c_string += next_bg_string
+    if next_fg is not None:
+        c_string += next_fg_string
     return c_string
-
-
-COLOR_WHITE = Color(red=255, green=255, blue=255)
-COLOR_CYAN = Color(red=1, green=87, blue=155)
-COLOR_GRAY = Color(red=100, green=100, blue=100)
-COLOR_GREEN = Color(red=104, green=159, blue=56)
-
-COLOR_SPINNER = COLOR_CYAN
-COLOR_BORDER = COLOR_GRAY
-
-FINISHED_STRING = colored("✅ Finished", fg=COLOR_GREEN)
-
-LENGTH_EMOJI = 2
 
 
 def shade(color: Color, shade_factor: float) -> Color:
@@ -63,6 +67,23 @@ def shade(color: Color, shade_factor: float) -> Color:
         green=int(color.green * factor),
         blue=int(color.blue * factor),
     )
+
+
+COLOR_WHITE = Color(red=255, green=255, blue=255)
+COLOR_CYAN = Color(red=1, green=87, blue=155)
+COLOR_GRAY = Color(red=100, green=100, blue=100)
+COLOR_RED_LIGHT = Color(red=239, green=83, blue=80)
+COLOR_GREEN = Color(red=104, green=159, blue=56)
+
+COLOR_SPINNER = COLOR_CYAN
+COLOR_BORDER = COLOR_GRAY
+COLOR_MESSAGE = shade(COLOR_GRAY, 0.2)
+COLOR_MESSAGE_TEXT = COLOR_GRAY
+COLOR_MUS = COLOR_RED_LIGHT
+
+FINISHED_STRING = colored("✅ Finished", fg=COLOR_GREEN)
+
+LENGTH_EMOJI = 2
 
 
 def render_progress_box(label: str, emoji: str, progress_frame: str):
@@ -121,7 +142,9 @@ def render_code_line(
     return line_heading + line_padding + line_content + line_padding
 
 
-def message_partitions(message: str, width: int) -> List[str]:
+def message_partitions(
+    message: str, width: int, word_highlight_fn: Optional[Callable[[str], str]] = None
+) -> List[str]:
     words = message.split()
     lines = []
     current_line = []
@@ -132,25 +155,35 @@ def message_partitions(message: str, width: int) -> List[str]:
         if current_line_length + len(word) + 1 <= width:
             current_line.append(word)
         else:
-            lines.append(" ".join(current_line).ljust(width))
+            line_string = " ".join(current_line).ljust(width)
+            if word_highlight_fn is not None:
+                for w in current_line:
+                    line_string = line_string.replace(w, word_highlight_fn(w))
+            lines.append(line_string)
             current_line = [word]
     return lines
 
 
-def render_llm_message(message: str, width: int) -> str:
+def render_llm_message(
+    message: str, width: int, word_highlight_fn: Optional[Callable[[str], str]] = None
+) -> str:
     line_1_avatar = " " + colored("      ", bg=shade(COLOR_GRAY, 0.2))
     line_2_avatar = " " + colored("  🤖  ", bg=shade(COLOR_GRAY, 0.2))
     line_3_avatar = " " + colored("      ", bg=shade(COLOR_GRAY, 0.2))
     width_avatar = 1 + 6
     width_text_box = width - 6
-    line_1_message = colored(" ◥", fg=shade(COLOR_GRAY, 0.2)) + colored(
-        " " * width_text_box, bg=shade(COLOR_GRAY, 0.2)
+    line_1_message = colored(" ◥", fg=COLOR_MESSAGE) + colored(
+        " " * width_text_box, bg=COLOR_MESSAGE
     )
-    line_n_message = colored(" " * width_text_box, bg=shade(COLOR_GRAY, 0.2))
+    line_n_message = colored(" " * width_text_box, bg=COLOR_MESSAGE)
 
     output = ""
     output += line_1_avatar + line_1_message + "\n"
-    for i, line in enumerate(message_partitions(message, width=width_text_box - 4)):
+    for i, line in enumerate(
+        message_partitions(
+            message, width=width_text_box - 4, word_highlight_fn=word_highlight_fn
+        )
+    ):
         if i == 0:
             front = line_2_avatar
         elif i == 1:
