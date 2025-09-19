@@ -49,8 +49,19 @@ explaidllm example/test.lp
 The default behaviour converts all you program atoms to assumptions, computes an MUS (Minimal Unsatisfiable Subset) from
 them, finds a matching unsatisfiable constraint and then prompts the configured LLM for an explanation.
 
+### Assumption Signatures
+
 If you want to filter only certain assumption signatures use the option `-a` to specify the signatures to be converted.
 
 ```bash
 explaidllm example/test.lp -a x/1
+```
+
+### LLM Models
+
+You can also specify which LLM Model should be used for the explanation using the `-m` model option.
+A list of available models can be found on the `--help` page.
+
+```bash
+explaidllm example/test.lp -m='gpt-4o'
 ```
