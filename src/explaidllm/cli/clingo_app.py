@@ -69,6 +69,7 @@ class ExplaidLlmApp(Application):
         self._assumption_signatures: Set[Tuple[str, int]] = set()
         self._llm_api_key: Optional[str] = None
         self._mus: Optional[UnsatisfiableSubset] = None
+        self._model_tag: ModelTag = ModelTag.GPT_4O_MINI
 
     def register_options(self, options: clingo.ApplicationOptions) -> None:
         group = "ExplaidLLM Options"
@@ -87,6 +88,14 @@ class ExplaidLlmApp(Application):
             "llm-api-key,k",
             "API Key for prompting the LLM",
             self._parse_llm_api_key,
+        )
+
+        model_options = [f"'{t.value.openai}'" for t in ModelTag]
+        options.add(
+            group,
+            "model,m",
+            f"LLM Model ({','.join(model_options)})",
+            self._parse_model_tag,
         )
 
     @staticmethod
@@ -112,6 +121,14 @@ class ExplaidLlmApp(Application):
     def _parse_llm_api_key(self, llm_api_key: str) -> bool:
         self._llm_api_key = llm_api_key.replace("=", "").strip()
         return True
+
+    def _parse_model_tag(self, model_tag: str) -> bool:
+        model_tag_string = model_tag.replace("=", "").strip()
+        tags = {t.value.openai: t for t in ModelTag}
+        if model_tag_string in tags.keys():
+            self._model_tag = tags[model_tag_string]
+            return True
+        return False
 
     def _highlight_mus(self, word: str) -> str:
         if self._mus is None:
@@ -203,11 +220,11 @@ class ExplaidLlmApp(Application):
         logger.debug(f"Found Unsatisfiable Constraints:\n{ucs}")
 
         # STEP 4 --- LLM Prompting
-        llm = OpenAIModel(ModelTag.GPT_4O_MINI, api_key=self._llm_api_key)
+        llm = OpenAIModel(model_tag=self._model_tag, api_key=self._llm_api_key)
         result = loop.run_until_complete(
             self.execute_with_progress(
                 self.step_llm,
-                progress_label="Prompting LLM",
+                progress_label=f"Prompting LLM ({self._model_tag.name})",
                 progress_emoji="🤖",
                 llm=llm,
                 assumptions=ap.assumptions,
