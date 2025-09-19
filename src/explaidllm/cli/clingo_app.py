@@ -56,9 +56,10 @@ class ExplaidLlmApp(Application):
 
     def __init__(self, name: str) -> None:
         self._assumption_signatures: Set[Tuple[str, int]] = set()
+        self._llm_api_key: Optional[str] = None
 
     def register_options(self, options: clingo.ApplicationOptions) -> None:
-        group = "ExplaidLLM Methods"
+        group = "ExplaidLLM Options"
 
         options.add(
             group,
@@ -67,6 +68,13 @@ class ExplaidLlmApp(Application):
             "(format: <name>/<arity>, default: all facts)",
             self._parse_assumption_signature,
             multi=True,
+        )
+
+        options.add(
+            group,
+            "llm-api-key,k",
+            "API Key for prompting the LLM",
+            self._parse_llm_api_key,
         )
 
     @staticmethod
@@ -87,6 +95,10 @@ class ExplaidLlmApp(Application):
             )
             return False
         self._assumption_signatures.add((signature, arity))
+        return True
+
+    def _parse_llm_api_key(self, llm_api_key: str) -> bool:
+        self._llm_api_key = llm_api_key.replace("=", "").strip()
         return True
 
     @staticmethod
@@ -152,7 +164,7 @@ class ExplaidLlmApp(Application):
         logger.debug(f"Found Unsatisfiable Constraints:\n{ucs}")
 
         # STEP 4 --- LLM Prompting
-        llm = OpenAIModel(ModelTag.GPT_4O_MINI)
+        llm = OpenAIModel(ModelTag.GPT_4O_MINI, api_key=self._llm_api_key)
         result = loop.run_until_complete(
             self.execute_with_progress(
                 self.step_llm,

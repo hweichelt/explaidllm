@@ -1,6 +1,7 @@
 """Wrapper for the OpenAI ChatGPT model"""
 
 import os
+from typing import Optional
 
 from openai import AsyncOpenAI
 
@@ -14,9 +15,12 @@ class OpenAIModel(AbstractModel):
 
     model_tag_key = "openai"
 
-    def __init__(self, model_tag: ModelTag):
+    def __init__(self, model_tag: ModelTag, api_key: Optional[str] = None):
         super().__init__(model_tag)
-        self._client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        openai_api_key = (
+            api_key if api_key is not None else os.environ.get("OPENAI_API_KEY")
+        )
+        self._client = AsyncOpenAI(api_key=openai_api_key)
 
     async def prompt(self, instructions_string: str, input_string: str) -> str:
         response = await self._client.responses.create(
