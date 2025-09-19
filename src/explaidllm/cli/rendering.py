@@ -1,5 +1,4 @@
 import asyncio
-import math
 import sys
 from dataclasses import dataclass
 from enum import Enum
@@ -122,17 +121,19 @@ def render_code_line(
     return line_heading + line_padding + line_content + line_padding
 
 
-def partition_message(message: str, width: int, line: int) -> str:
-    return message[line * width : (line + 1) * width].ljust(width)
-
-
 def message_partitions(message: str, width: int) -> List[str]:
+    words = message.split()
     lines = []
-    n_lines = int(math.ceil(len(message) / width))
-    for line in range(n_lines):
-        lines.append(partition_message(message, width, line))
-    if len(lines) < 2:
-        lines.append("".ljust(width))
+    current_line = []
+    for word in words:
+        current_line_length = sum([len(w) for w in current_line]) + max(
+            len(current_line) - 1, 0
+        )
+        if current_line_length + len(word) + 1 <= width:
+            current_line.append(word)
+        else:
+            lines.append(" ".join(current_line).ljust(width))
+            current_line = [word]
     return lines
 
 
