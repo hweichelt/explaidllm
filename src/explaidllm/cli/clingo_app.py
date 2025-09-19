@@ -32,7 +32,18 @@ from dotenv import load_dotenv
 from ..llms.models import AbstractModel, ModelTag, OpenAIModel
 from ..llms.templates import ExplainTemplate
 from ..utils.logging import DEFAULT_LOGGER_NAME
-from .rendering import progress_box, render_code_line, render_llm_message
+from .rendering import (
+    COLOR_GRAY,
+    COLOR_MESSAGE,
+    COLOR_MESSAGE_TEXT,
+    COLOR_MUS,
+    COLOR_WHITE,
+    colored,
+    progress_box,
+    render_code_line,
+    render_details,
+    render_llm_message,
+)
 
 logger = logging.getLogger(DEFAULT_LOGGER_NAME)
 
@@ -57,6 +68,7 @@ class ExplaidLlmApp(Application):
     def __init__(self, name: str) -> None:
         self._assumption_signatures: Set[Tuple[str, int]] = set()
         self._llm_api_key: Optional[str] = None
+        self._mus: Optional[UnsatisfiableSubset] = None
 
     def register_options(self, options: clingo.ApplicationOptions) -> None:
         group = "ExplaidLLM Options"
@@ -101,6 +113,16 @@ class ExplaidLlmApp(Application):
         self._llm_api_key = llm_api_key.replace("=", "").strip()
         return True
 
+    def _highlight_mus(self, word: str) -> str:
+        if self._mus is None:
+            return word
+        mus_assumption_strings = [str(a.symbol) for a in self._mus.assumptions]
+        if word in mus_assumption_strings:
+            return colored(
+                word, fg=COLOR_MUS, next_fg=COLOR_MESSAGE_TEXT, next_bg=COLOR_MESSAGE
+            )
+        return word
+
     @staticmethod
     def is_satisfiable(files: Iterable[str]) -> bool:
         control = clingo.Control()
@@ -128,6 +150,12 @@ class ExplaidLlmApp(Application):
                 files=files,
             )
         )
+        sys.stdout.write("\n")
+        sys.stdout.write(
+            render_details(files, width=100, fg=COLOR_WHITE, bg=COLOR_GRAY)
+        )
+        sys.stdout.write("\n\n")
+
         # Skip explanation if the program is SAT
         if ExplaidLlmApp.is_satisfiable(files):
             logger.info("Program is satisfiable, no explanation needed :)")
@@ -149,7 +177,18 @@ class ExplaidLlmApp(Application):
                 ap=ap,
             )
         )
+        self._mus = mus
         logger.debug(f"Found MUS: {mus}")
+        sys.stdout.write("\n")
+        sys.stdout.write(
+            render_details(
+                [str(a.symbol) for a in mus.assumptions],
+                width=100,
+                fg=COLOR_WHITE,
+                bg=COLOR_MUS,
+            )
+        )
+        sys.stdout.write("\n\n")
 
         # STEP 3 --- UCS Computations
         ucs, locations = loop.run_until_complete(
@@ -195,7 +234,11 @@ class ExplaidLlmApp(Application):
             )
         )
         sys.stdout.write("\n")
-        sys.stdout.write(render_llm_message(explanation, width=100))
+        sys.stdout.write(
+            render_llm_message(
+                explanation, width=100, word_highlight_fn=self._highlight_mus
+            )
+        )
 
         sys.stdout.write("\n\n")
 
