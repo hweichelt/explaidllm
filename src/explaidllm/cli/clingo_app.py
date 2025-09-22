@@ -219,6 +219,20 @@ class ExplaidLlmApp(Application):
         )
         logger.debug(f"Found Unsatisfiable Constraints:\n{ucs}")
 
+        c_id, uc = list(ucs.items())[0]
+        constraint = uc
+        position = locations.get(c_id).begin
+
+        sys.stdout.write(
+            render_code_line(
+                line_number=position.line,
+                content=constraint,
+                filename=position.filename,
+                width=100,
+            )
+        )
+        sys.stdout.write("\n")
+
         # STEP 4 --- LLM Prompting
         llm = OpenAIModel(model_tag=self._model_tag, api_key=self._llm_api_key)
         result = loop.run_until_complete(
@@ -238,19 +252,8 @@ class ExplaidLlmApp(Application):
         result_json = json.loads(result, strict=False)
         explanation = " ".join(result_json["explanation"].replace("\n", "").split())
 
-        c_id, uc = list(ucs.items())[0]
-        constraint = uc
-        position = locations.get(c_id).begin
-
-        sys.stdout.write(
-            render_code_line(
-                line_number=position.line,
-                content=constraint,
-                filename=position.filename,
-                width=100,
-            )
-        )
         sys.stdout.write("\n")
+
         sys.stdout.write(
             render_llm_message(
                 explanation, width=100, word_highlight_fn=self._highlight_mus
