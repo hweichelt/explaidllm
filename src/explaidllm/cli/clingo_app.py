@@ -100,7 +100,7 @@ class ExplaidLlmApp(Application):
 
     @staticmethod
     def _parse_signature(signature_string: str) -> Tuple[str, int]:
-        match_result = re.match(r"^([a-zA-Z]+)/([0-9]+)$", signature_string)
+        match_result = re.match(r"^([a-zA-Z_]+)/([0-9]+)$", signature_string)
         if match_result is None:
             raise ValueError("Wrong signature Format")
         return match_result.group(1), int(match_result.group(2))
